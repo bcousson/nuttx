@@ -107,8 +107,8 @@ struct gb_operation {
     struct gb_operation *response;
 
 #if defined(CONFIG_ARA_GB_LOOPBACK)
-    struct timeval send_time;
-    struct timeval recv_time;
+    struct timespec send_time;
+    struct timespec recv_time;
 #endif
 };
 

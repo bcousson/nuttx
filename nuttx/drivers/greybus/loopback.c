@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include "loopback-gb.h"
 
@@ -39,6 +40,7 @@
 #include <nuttx/time.h>
 #include <nuttx/unipro/unipro.h>
 #include <arch/byteorder.h>
+#include <arch/tsb/tmr.h>
 
 #define GB_LOOPBACK_VERSION_MAJOR 0
 #define GB_LOOPBACK_VERSION_MINOR 1
@@ -201,15 +203,21 @@ int gb_loopback_cport_valid(int cport)
 static void update_loopback_stats(struct gb_operation *operation)
 {
     struct gb_loopback_transfer_request *request;
+    struct timeval tv_total, tv_send, tv_recv;
     struct gb_loopback_statistics *stats;
     struct gb_loopback *loopback;
-    struct timeval tv_total;
     unsigned tps, rps;
     useconds_t total;
     size_t tpr;
 
-    gettimeofday(&operation->recv_time, NULL);
-    timersub(&operation->recv_time, &operation->send_time, &tv_total);
+    tsb_timer_get(&operation->recv_time);
+
+    tv_send.tv_sec = operation->send_time.tv_sec;
+    tv_send.tv_usec = operation->send_time.tv_nsec / 1000;
+    tv_recv.tv_sec = operation->recv_time.tv_sec;
+    tv_recv.tv_usec = operation->recv_time.tv_nsec / 1000;
+
+    timersub(&tv_recv, &tv_send, &tv_total);
     total = timeval_to_usec(&tv_total);
 
     loopback = loopback_from_cport(operation->cport);
@@ -227,33 +235,33 @@ static void update_loopback_stats(struct gb_operation *operation)
      * macro, but with BSD license.
      */
     stats = &loopback->stats;
-    stats->latency = (stats->latency + total) / 2;
-    stats->throughput = (stats->throughput + tps) / 2;
-    stats->reqs_per_sec = (stats->reqs_per_sec + rps) / 2;
+    stats->latency_avg = (stats->latency_avg + total) / 2;
+    stats->throughput_avg = (stats->throughput_avg + tps) / 2;
+    stats->reqs_per_sec_avg = (stats->reqs_per_sec_avg + rps) / 2;
 
     if (stats->latency_min == 0)
-        stats->latency_min = stats->latency;
-    else if (stats->latency < stats->latency_min)
-        stats->latency_min = stats->latency;
+        stats->latency_min = stats->latency_avg;
+    else if (stats->latency_avg < stats->latency_min)
+        stats->latency_min = stats->latency_avg;
 
     if (stats->throughput_min == 0)
-        stats->throughput_min = stats->throughput;
-    else if (stats->throughput < stats->throughput_min)
-        stats->throughput_min = stats->throughput;
+        stats->throughput_min = stats->throughput_avg;
+    else if (stats->throughput_avg < stats->throughput_min)
+        stats->throughput_min = stats->throughput_avg;
 
     if (stats->reqs_per_sec_min == 0)
-        stats->reqs_per_sec_min = stats->reqs_per_sec;
-    else if (stats->reqs_per_sec < stats->reqs_per_sec_min)
-        stats->reqs_per_sec_min = stats->reqs_per_sec;
+        stats->reqs_per_sec_min = stats->reqs_per_sec_avg;
+    else if (stats->reqs_per_sec_avg < stats->reqs_per_sec_min)
+        stats->reqs_per_sec_min = stats->reqs_per_sec_avg;
 
-    if (stats->latency > stats->latency_max)
-        stats->latency_max = stats->latency;
+    if (stats->latency_avg > stats->latency_max)
+        stats->latency_max = stats->latency_avg;
 
-    if (stats->throughput > stats->throughput_max)
-        stats->throughput_max = stats->throughput;
+    if (stats->throughput_avg > stats->throughput_max)
+        stats->throughput_max = stats->throughput_avg;
 
-    if (stats->reqs_per_sec > stats->reqs_per_sec_max)
-        stats->reqs_per_sec_max = stats->reqs_per_sec;
+    if (stats->reqs_per_sec_avg > stats->reqs_per_sec_max)
+        stats->reqs_per_sec_max = stats->reqs_per_sec_avg;
 }
 
 /* Callbacks for gb_operation_send_request(). */
@@ -315,7 +323,7 @@ int gb_loopback_send_req(int cport, size_t size, uint8_t type)
     if (!operation)
         return -ENOMEM;
 
-    gettimeofday(&operation->send_time, NULL);
+    tsb_timer_get(&operation->send_time);
 
     switch(type) {
     case GB_LOOPBACK_TYPE_PING:
@@ -407,8 +415,17 @@ struct gb_driver loopback_driver = {
     .op_handlers_count = ARRAY_SIZE(gb_loopback_handlers),
 };
 
+static pthread_once_t timer_once = PTHREAD_ONCE_INIT;
+
+static void timer_init(void)
+{
+    tsb_timer_init();
+}
+
 void gb_loopback_register(int cport)
 {
+    pthread_once(&timer_once, timer_init);
+
     struct gb_loopback *loopback = zalloc(sizeof(*loopback));
     if (loopback) {
         loopback->cport = cport;

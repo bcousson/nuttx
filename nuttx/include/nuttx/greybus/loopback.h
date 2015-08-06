@@ -40,9 +40,10 @@
 
 struct gb_loopback_statistics {
     unsigned recv;
-    unsigned throughput;
-    unsigned reqs_per_sec;
-    unsigned latency;
+
+    unsigned throughput_avg;
+    unsigned reqs_per_sec_avg;
+    unsigned latency_avg;
 
     unsigned throughput_min;
     unsigned reqs_per_sec_min;

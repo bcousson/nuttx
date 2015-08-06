@@ -171,9 +171,9 @@ static void print_status_normal(void)
                ctx->err,
                ctx->sent,
                stats.recv,
-               stats.throughput,
-               stats.latency,
-               stats.reqs_per_sec);
+               stats.throughput_avg,
+               stats.latency_avg,
+               stats.reqs_per_sec_avg);
         loopback_ctx_unlock(ctx);
     }
     loopback_ctx_list_unlock();
@@ -201,13 +201,13 @@ static void print_status_csv(void)
                stats.recv,
                stats.throughput_min,
                stats.throughput_max,
-               stats.throughput,
+               stats.throughput_avg,
                stats.latency_min,
                stats.latency_max,
-               stats.latency,
+               stats.latency_avg,
                stats.reqs_per_sec_min,
                stats.reqs_per_sec_max,
-               stats.reqs_per_sec);
+               stats.reqs_per_sec_avg);
         loopback_ctx_unlock(ctx);
     }
     loopback_ctx_list_unlock();
