@@ -117,4 +117,16 @@ EXTERN time_t clock_calendar2utc(int year, int month, int day);
 }
 #endif
 
+/****************************************************************************
+ * Function:  timeval_to_usec
+ *
+ * Description:
+ *    Convert struct timeval to microseconds.
+ *
+ ****************************************************************************/
+static inline useconds_t timeval_to_usec(const struct timeval *tv)
+{
+    return (tv->tv_sec * (uint64_t)1000000) + tv->tv_usec;
+}
+
 #endif /* __INCLUDE_NUTTX_TIME_H */
