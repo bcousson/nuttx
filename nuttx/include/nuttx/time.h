@@ -129,4 +129,16 @@ static inline useconds_t timeval_to_usec(const struct timeval *tv)
     return (tv->tv_sec * (uint64_t)1000000) + tv->tv_usec;
 }
 
+/****************************************************************************
+ * Function:  timeval_to_usec
+ *
+ * Description:
+ *    Convert struct timeval to microseconds.
+ *
+ ****************************************************************************/
+static inline useconds_t msec_to_usec(unsigned ms)
+{
+    return ms * 1000;
+}
+
 #endif /* __INCLUDE_NUTTX_TIME_H */

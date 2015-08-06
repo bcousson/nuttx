@@ -78,8 +78,8 @@ struct loopback_context {
     int cport;
     int type;
     size_t size;
-    unsigned wait;
-    unsigned left_to_wait;
+    useconds_t wait;
+    useconds_t left_to_wait;
     int count; /* -1 = infinite */
     int err;
     unsigned sent;
@@ -254,7 +254,7 @@ int gb_loopback_service(void)
             timersub(&tv_end, &tv_start, &tv_total);
 
             loop_time = timeval_to_usec(&tv_total);
-            sleep_time = wait_min * 1000;
+            sleep_time = wait_min;
 
             if (loop_time > sleep_time)
                 fprintf(stderr, "%s running late\n", __FUNCTION__);
@@ -276,8 +276,8 @@ int gbl_main(int argc, char *argv[])
 {
     int opt, rv = EXIT_SUCCESS, st, cport = -1, type = 0, count = -1;
     struct loopback_context *ctx;
+    unsigned wait_ms = 1000;
     struct list_head *iter;
-    unsigned wait = 1000;
     const char *cmd;
     size_t size = 1;
 
@@ -301,7 +301,7 @@ int gbl_main(int argc, char *argv[])
                 goto help;
             break;
         case 'w':
-            st = sscanf(optarg, "%u", &wait);
+            st = sscanf(optarg, "%u", &wait_ms);
             if (st != 1)
                 goto help;
             break;
@@ -345,7 +345,7 @@ int gbl_main(int argc, char *argv[])
                 ctx->active = 1;
                 ctx->type = type;
                 ctx->size = size;
-                ctx->wait = wait;
+                ctx->wait = msec_to_usec(wait_ms);
                 ctx->count = count;
                 ctx->sent = 0;
                 loopback_ctx_unlock(ctx);
