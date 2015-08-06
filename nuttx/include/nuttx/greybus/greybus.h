@@ -105,6 +105,11 @@ struct gb_operation {
     struct list_head list;
 
     struct gb_operation *response;
+
+#if defined(CONFIG_ARA_GB_LOOPBACK)
+    struct timeval send_time;
+    struct timeval recv_time;
+#endif
 };
 
 struct gb_driver {

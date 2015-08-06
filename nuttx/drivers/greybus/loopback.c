@@ -29,12 +29,15 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "loopback-gb.h"
 
 #include <nuttx/list.h>
 #include <nuttx/greybus/greybus.h>
 #include <nuttx/greybus/loopback.h>
+#include <nuttx/time.h>
+#include <nuttx/unipro/unipro.h>
 #include <arch/byteorder.h>
 
 #define GB_LOOPBACK_VERSION_MAJOR 0
@@ -45,7 +48,7 @@ struct gb_loopback {
     pthread_mutex_t lock;
     int cport;
     int err;
-    unsigned recv;
+    struct gb_loopback_statistics stats;
 };
 
 struct list_head gb_loopback_list = LIST_INIT(gb_loopback_list);
@@ -143,23 +146,19 @@ static void loopback_error_notify(int cport)
     }
 }
 
-/**
- * @brief Get the number of received responses on given cport
- * @param cport cport number
- * @return Number of received responses since the last reset
- */
-unsigned gb_loopback_get_recv_count(int cport)
+int gb_loopback_get_stats(int cport, struct gb_loopback_statistics *stats)
 {
-    struct gb_loopback *loopback = loopback_from_cport(cport);
-    unsigned recv = 0;
+    struct gb_loopback *loopback;
 
-    if (loopback != NULL) {
-        loopback_lock(loopback);
-        recv = loopback->recv;
-        loopback_unlock(loopback);
-    }
+    loopback = loopback_from_cport(cport);
+    if (!loopback)
+        return -EINVAL;
 
-    return recv;
+    loopback_lock(loopback);
+    memcpy(stats, &loopback->stats, sizeof(struct gb_loopback_statistics));
+    loopback_unlock(loopback);
+
+    return 0;
 }
 
 static void loopback_recv_inc(int cport)
@@ -168,7 +167,7 @@ static void loopback_recv_inc(int cport)
 
     if (loopback != NULL) {
         loopback_lock(loopback);
-        loopback->recv++;
+        loopback->stats.recv++;
         loopback_unlock(loopback);
     }
 }
@@ -184,7 +183,7 @@ void gb_loopback_reset(int cport)
     if (loopback != NULL) {
         loopback_lock(loopback);
         loopback->err = 0;
-        loopback->recv = 0;
+        memset(&loopback->stats, 0, sizeof(struct gb_loopback_statistics));
         loopback_unlock(loopback);
     }
 }
@@ -199,6 +198,44 @@ int gb_loopback_cport_valid(int cport)
     return loopback_from_cport(cport) != NULL;
 }
 
+static void update_loopback_stats(struct gb_operation *operation)
+{
+    struct gb_loopback_transfer_request *request;
+    struct gb_loopback *loopback;
+    struct timeval tv_total;
+    unsigned tps, rps;
+    useconds_t total;
+    size_t tpr;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    printf("ts: %u.%d\n", ts.tv_sec, ts.tv_nsec);
+
+    gettimeofday(&operation->recv_time, NULL);
+    printf("gettimeofday: %u.%d\n", operation->recv_time.tv_sec, operation->recv_time.tv_usec);
+    timersub(&operation->recv_time, &operation->send_time, &tv_total);
+    total = timeval_to_usec(&tv_total);
+
+    loopback = loopback_from_cport(operation->cport);
+    if (!loopback)
+        return;
+
+    request = gb_operation_get_request_payload(operation);
+    tpr = request->len * 2; /* Throughput per req is double the req size. */
+
+    printf("total %u\n", total);
+    tps = tpr * (1000000 / total);
+    rps = 1000000 / total;
+
+    /*
+     * XXX Would be good to have a linux kernel-like DIV_ROUND_CLOSEST()
+     * macro, but with BSD license.
+     */
+    loopback->stats.latency = (loopback->stats.latency + total) / 2;
+    loopback->stats.throughput = (loopback->stats.throughput + tps) / 2;
+    loopback->stats.reqs_per_sec = (loopback->stats.reqs_per_sec + rps) / 2;
+}
+
 /* Callbacks for gb_operation_send_request(). */
 
 static void gb_loopback_ping_sink_resp_cb(struct gb_operation *operation)
@@ -206,10 +243,12 @@ static void gb_loopback_ping_sink_resp_cb(struct gb_operation *operation)
     int ret;
 
     ret = gb_operation_get_request_result(operation);
-    if (ret != OK)
+    if (ret != OK) {
         loopback_error_notify(operation->cport);
-    else
+    } else {
         loopback_recv_inc(operation->cport);
+        update_loopback_stats(operation);
+    }
 }
 
 static void gb_loopback_transfer_resp_cb(struct gb_operation *operation)
@@ -220,10 +259,12 @@ static void gb_loopback_transfer_resp_cb(struct gb_operation *operation)
     request = gb_operation_get_request_payload(operation);
     response = gb_operation_get_request_payload(operation->response);
 
-    if (memcmp(request->data, response->data, le32_to_cpu(request->len)))
+    if (memcmp(request->data, response->data, le32_to_cpu(request->len))) {
         loopback_error_notify(operation->cport);
-    else
+    } else {
         loopback_recv_inc(operation->cport);
+        update_loopback_stats(operation);
+    }
 }
 
 /**
@@ -253,6 +294,8 @@ int gb_loopback_send_req(int cport, size_t size, uint8_t type)
     }
     if (!operation)
         return -ENOMEM;
+
+    gettimeofday(&operation->send_time, NULL);
 
     switch(type) {
     case GB_LOOPBACK_TYPE_PING:
