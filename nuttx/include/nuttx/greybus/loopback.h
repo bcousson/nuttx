@@ -38,12 +38,19 @@
 #define GB_LOOPBACK_TYPE_TRANSFER                       0x03
 #define GB_LOOPBACK_TYPE_SINK                           0x04
 
+struct gb_loopback_statistics {
+    unsigned recv;
+    unsigned throughput;
+    unsigned reqs_per_sec;
+    unsigned latency;
+};
+
 typedef int (*gb_loopback_cport_cb)(int, void *);
 
 int gb_loopback_get_cports(gb_loopback_cport_cb cb, void *data);
 int gb_loopback_send_req(int cport, size_t size, uint8_t type);
 int gb_loopback_get_error_count(int cport);
-unsigned gb_loopback_get_recv_count(int cport);
+int gb_loopback_get_stats(int cport, struct gb_loopback_statistics *stats);
 void gb_loopback_reset(int cport);
 int gb_loopback_cport_valid(int cport);
 
