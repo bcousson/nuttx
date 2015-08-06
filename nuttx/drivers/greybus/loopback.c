@@ -201,6 +201,7 @@ int gb_loopback_cport_valid(int cport)
 static void update_loopback_stats(struct gb_operation *operation)
 {
     struct gb_loopback_transfer_request *request;
+    struct gb_loopback_statistics *stats;
     struct gb_loopback *loopback;
     struct timeval tv_total;
     unsigned tps, rps;
@@ -231,9 +232,10 @@ static void update_loopback_stats(struct gb_operation *operation)
      * XXX Would be good to have a linux kernel-like DIV_ROUND_CLOSEST()
      * macro, but with BSD license.
      */
-    loopback->stats.latency = (loopback->stats.latency + total) / 2;
-    loopback->stats.throughput = (loopback->stats.throughput + tps) / 2;
-    loopback->stats.reqs_per_sec = (loopback->stats.reqs_per_sec + rps) / 2;
+    stats = &loopback->stats;
+    stats->latency = (stats->latency + total) / 2;
+    stats->throughput = (stats->throughput + tps) / 2;
+    stats->reqs_per_sec = (stats->reqs_per_sec + rps) / 2;
 }
 
 /* Callbacks for gb_operation_send_request(). */
