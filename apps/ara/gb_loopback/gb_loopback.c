@@ -331,7 +331,6 @@ int gbl_main(int argc, char *argv[])
 #endif
 {
     int opt, rv = EXIT_SUCCESS, st, cport = -1, type = 0, count = -1;
-    struct gb_loopback_statistics stats;
     struct loopback_context *ctx;
     const char *cmd, *fmt = NULL;
     unsigned wait_ms = 1000;
