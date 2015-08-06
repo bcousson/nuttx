@@ -43,6 +43,14 @@ struct gb_loopback_statistics {
     unsigned throughput;
     unsigned reqs_per_sec;
     unsigned latency;
+
+    unsigned throughput_min;
+    unsigned reqs_per_sec_min;
+    unsigned latency_min;
+
+    unsigned throughput_max;
+    unsigned reqs_per_sec_max;
+    unsigned latency_max;
 };
 
 typedef int (*gb_loopback_cport_cb)(int, void *);

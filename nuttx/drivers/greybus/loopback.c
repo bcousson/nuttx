@@ -208,12 +208,7 @@ static void update_loopback_stats(struct gb_operation *operation)
     useconds_t total;
     size_t tpr;
 
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    printf("ts: %u.%d\n", ts.tv_sec, ts.tv_nsec);
-
     gettimeofday(&operation->recv_time, NULL);
-    printf("gettimeofday: %u.%d\n", operation->recv_time.tv_sec, operation->recv_time.tv_usec);
     timersub(&operation->recv_time, &operation->send_time, &tv_total);
     total = timeval_to_usec(&tv_total);
 
@@ -224,7 +219,6 @@ static void update_loopback_stats(struct gb_operation *operation)
     request = gb_operation_get_request_payload(operation);
     tpr = request->len * 2; /* Throughput per req is double the req size. */
 
-    printf("total %u\n", total);
     tps = tpr * (1000000 / total);
     rps = 1000000 / total;
 
@@ -236,6 +230,30 @@ static void update_loopback_stats(struct gb_operation *operation)
     stats->latency = (stats->latency + total) / 2;
     stats->throughput = (stats->throughput + tps) / 2;
     stats->reqs_per_sec = (stats->reqs_per_sec + rps) / 2;
+
+    if (stats->latency_min == 0)
+        stats->latency_min = stats->latency;
+    else if (stats->latency < stats->latency_min)
+        stats->latency_min = stats->latency;
+
+    if (stats->throughput_min == 0)
+        stats->throughput_min = stats->throughput;
+    else if (stats->throughput < stats->throughput_min)
+        stats->throughput_min = stats->throughput;
+
+    if (stats->reqs_per_sec_min == 0)
+        stats->reqs_per_sec_min = stats->reqs_per_sec;
+    else if (stats->reqs_per_sec < stats->reqs_per_sec_min)
+        stats->reqs_per_sec_min = stats->reqs_per_sec;
+
+    if (stats->latency > stats->latency_max)
+        stats->latency_max = stats->latency;
+
+    if (stats->throughput > stats->throughput_max)
+        stats->throughput_max = stats->throughput;
+
+    if (stats->reqs_per_sec > stats->reqs_per_sec_max)
+        stats->reqs_per_sec_max = stats->reqs_per_sec;
 }
 
 /* Callbacks for gb_operation_send_request(). */
