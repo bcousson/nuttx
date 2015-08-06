@@ -200,7 +200,7 @@ int gb_loopback_cport_valid(int cport)
     return loopback_from_cport(cport) != NULL;
 }
 
-static void update_loopback_stats(struct gb_operation *operation)
+static void update_loopback_stats(struct gb_operation *operation, int sm)
 {
     struct gb_loopback_transfer_request *request;
     struct timeval tv_total, tv_send, tv_recv;
@@ -225,7 +225,7 @@ static void update_loopback_stats(struct gb_operation *operation)
         return;
 
     request = gb_operation_get_request_payload(operation);
-    tpr = request->len * 2; /* Throughput per req is double the req size. */
+    tpr = request->len * sm;
 
     tps = tpr * (1000000 / total);
     rps = 1000000 / total;
@@ -275,7 +275,7 @@ static void gb_loopback_ping_sink_resp_cb(struct gb_operation *operation)
         loopback_error_notify(operation->cport);
     } else {
         loopback_recv_inc(operation->cport);
-        update_loopback_stats(operation);
+        update_loopback_stats(operation, 1);
     }
 }
 
@@ -291,7 +291,7 @@ static void gb_loopback_transfer_resp_cb(struct gb_operation *operation)
         loopback_error_notify(operation->cport);
     } else {
         loopback_recv_inc(operation->cport);
-        update_loopback_stats(operation);
+        update_loopback_stats(operation, 2);
     }
 }
 
