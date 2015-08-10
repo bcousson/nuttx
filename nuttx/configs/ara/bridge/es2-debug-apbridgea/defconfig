@@ -612,7 +612,7 @@ CONFIG_GB_LOG_DEBUG=y
 # CONFIG_GB_LOG_DUMP is not set
 # CONFIG_MANIFEST_ALL is not set
 CONFIG_CUSTOM_MANIFEST=y
-CONFIG_MANIFEST="2,all-modules;3,all-modules"
+CONFIG_MANIFEST="2,all-modules;3,all-modules;4,all-modules"
 CONFIG_SVC_MSG=y
 
 #
