@@ -95,6 +95,8 @@ else
  MANIFEST = $(CONFIG_DST_DEVID),$(MANIFEST_COPY)
 endif
 
+# " (this line is work around to fix a GNUMakefile-mode bug in emacs)
+
 ifdef MANIFEST_REQUIRED
  ifndef MANIFEST
   $(error MANIFEST unspecified or does not exist!)
