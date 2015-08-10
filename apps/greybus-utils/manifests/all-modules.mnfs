@@ -57,30 +57,6 @@ protocol = 0x00
 class = 0
 id = 0
 
-; GPIO protocol on CPort 3
-[cport-descriptor "3"]
-bundle = 1
-id = 3
-protocol = 0x02
-
-; I2C protocol on CPort 4
-[cport-descriptor "4"]
-bundle = 1
-id = 4
-protocol = 0x03
-
-; UART protocol on CPort 5
-[cport-descriptor "5"]
-bundle = 1
-id = 5
-protocol = 0x04
-
-; BATTERY protocol on CPort 8
-[cport-descriptor "8"]
-bundle = 1
-id = 8
-protocol = 0x08
-
 ; LOOPBACK protocol on CPort 13
 [cport-descriptor "13"]
 bundle = 1
